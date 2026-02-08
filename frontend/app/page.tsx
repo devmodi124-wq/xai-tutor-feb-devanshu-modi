@@ -1,65 +1,112 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Email } from "./types";
+import { fetchEmails, updateEmail } from "./api";
+import Sidebar from "./components/Sidebar";
+import EmailList from "./components/EmailList";
+import EmailDetail from "./components/EmailDetail";
 
 export default function Home() {
+  const [emails, setEmails] = useState<Email[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "archived">("all");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    loadEmails(activeFilter);
+  }, [activeFilter]);
+
+  async function loadEmails(filter: "all" | "unread" | "archived") {
+    try {
+      const data = await fetchEmails(filter);
+      setEmails(data);
+      if (data.length > 0 && (!selectedId || !data.find((e) => e.id === selectedId))) {
+        setSelectedId(data[0].id);
+      }
+    } catch (err) {
+      console.error("Failed to load emails:", err);
+    }
+  }
+
+  async function handleMarkRead(id: number) {
+    try {
+      const email = emails.find((e) => e.id === id);
+      if (!email) return;
+      const updated = await updateEmail(id, { is_read: !email.is_read });
+      setEmails((prev) => prev.map((e) => (e.id === id ? updated : e)));
+    } catch (err) {
+      console.error("Failed to update email:", err);
+    }
+  }
+
+  async function handleArchive(id: number) {
+    try {
+      const email = emails.find((e) => e.id === id);
+      if (!email) return;
+      const updated = await updateEmail(id, { is_archived: !email.is_archived });
+      setEmails((prev) => prev.map((e) => (e.id === id ? updated : e)));
+    } catch (err) {
+      console.error("Failed to archive email:", err);
+    }
+  }
+
+  function handleSelectEmail(id: number) {
+    setSelectedId(id);
+    const email = emails.find((e) => e.id === id);
+    if (email && !email.is_read) {
+      handleMarkRead(id);
+    }
+  }
+
+  const selectedEmail = emails.find((e) => e.id === selectedId) || null;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="app-layout">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+      <div className="main-content">
+        {/* Shared top header spanning email list + detail */}
+        <div className="main-header">
+          <h1 className="main-header-title">Emails</h1>
+          <div className="main-header-actions">
+            <div className="search-email-wrapper">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input type="text" placeholder="Search Email" className="search-email-input" readOnly />
+            </div>
+            <button className="new-message-btn">+ New Message</button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+        {/* Two-column area below the header */}
+        <div className="main-body">
+          <EmailList
+            emails={emails}
+            selectedId={selectedId}
+            activeFilter={activeFilter}
+            onSelectEmail={handleSelectEmail}
+            onFilterChange={setActiveFilter}
+            onArchive={handleArchive}
+          />
+          {selectedEmail ? (
+            <EmailDetail
+              key={selectedEmail.id}
+              email={selectedEmail}
+              allEmails={emails}
+              onMarkRead={handleMarkRead}
+              onArchive={handleArchive}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          ) : (
+            <div className="email-detail-panel email-detail-empty">
+              <p>Select an email to view</p>
+            </div>
+          )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -6,7 +6,7 @@ This is a timed coding exercise to evaluate your ability to build a fullstack ap
 ![Implementation](implementation.jpeg)
 
 ## Time Limit
-**90 minutes** – Prioritize core functionality and visual accuracy.
+**20 minutes** – Prioritize core functionality and visual accuracy.
 
 ## Tech Stack
 - **Frontend:** Next.js 16+ (App Router) with Tailwind CSS
