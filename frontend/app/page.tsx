@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { Email } from "./types";
-import { fetchEmails, updateEmail } from "./api";
+import { fetchEmails, updateEmail, createEmail } from "./api";
 import Sidebar from "./components/Sidebar";
 import EmailList from "./components/EmailList";
 import EmailDetail from "./components/EmailDetail";
+import ComposeModal from "./components/ComposeModal";
 
 export default function Home() {
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "archived">("all");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
 
   useEffect(() => {
     loadEmails(activeFilter);
@@ -59,6 +61,17 @@ export default function Home() {
     }
   }
 
+  async function handleSendEmail(data: { recipient_name: string; recipient_email: string; subject: string; body: string }) {
+    try {
+      const created = await createEmail(data);
+      setEmails((prev) => [created, ...prev]);
+      setSelectedId(created.id);
+      setComposeOpen(false);
+    } catch (err) {
+      console.error("Failed to send email:", err);
+    }
+  }
+
   const selectedEmail = emails.find((e) => e.id === selectedId) || null;
 
   return (
@@ -79,7 +92,7 @@ export default function Home() {
               </svg>
               <input type="text" placeholder="Search Email" className="search-email-input" readOnly />
             </div>
-            <button className="new-message-btn">+ New Message</button>
+            <button className="new-message-btn" onClick={() => setComposeOpen(true)}>+ New Message</button>
           </div>
         </div>
         {/* Two-column area below the header */}
@@ -107,6 +120,9 @@ export default function Home() {
           )}
         </div>
       </div>
+      {composeOpen && (
+        <ComposeModal onSend={handleSendEmail} onClose={() => setComposeOpen(false)} />
+      )}
     </div>
   );
 }
